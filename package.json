@@ -1,5 +1,5 @@
 {
-  "name": "purrikey",
+  "name": "@lastdotnot/purrikey",
   "version": "1.0.0",
   "description": "An ethers.js-compatible signer with AWS KMS support",
   "main": "dist/index.js",
@@ -28,7 +28,7 @@
     "blockchain",
     "crypto"
   ],
-  "author": "",
+  "author": "Last Labs",
   "license": "MIT",
   "repository": {
     "type": "git",
