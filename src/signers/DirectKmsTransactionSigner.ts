@@ -16,10 +16,10 @@ export class DirectKmsTransactionSigner extends Signer {
   private retryDelay: number;
 
   constructor(
-    keyId: string, 
-    provider?: providers.Provider, 
-    region?: string, 
-    debug: boolean = false,
+    keyId: string,
+    provider?: providers.Provider,
+    region?: string,
+    debug = false,
     maxRetries = 3,
     retryDelay = 500
   ) {
@@ -87,7 +87,9 @@ export class DirectKmsTransactionSigner extends Signer {
       const keyBytes = derPublicKey.slice(pos);
 
       if (keyBytes[0] !== 0x04) {
-        throw new Error(`Expected uncompressed public key starting with 0x04, got 0x${keyBytes[0].toString(16)}`);
+        throw new Error(
+          `Expected uncompressed public key starting with 0x04, got 0x${keyBytes[0].toString(16)}`
+        );
       }
 
       if (this.debug) {
@@ -112,8 +114,11 @@ export class DirectKmsTransactionSigner extends Signer {
   async getAddress(): Promise<string> {
     if (this._address) return this._address;
     if (this._cachedPublicKeys.has(this.kmsKeyId)) {
-      this._address = this._cachedPublicKeys.get(this.kmsKeyId)!;
-      return this._address;
+      const cachedAddress = this._cachedPublicKeys.get(this.kmsKeyId);
+      if (cachedAddress) {
+        this._address = cachedAddress;
+        return this._address;
+      }
     }
 
     try {
@@ -152,12 +157,18 @@ export class DirectKmsTransactionSigner extends Signer {
 
         return ethAddress;
       } catch (e) {
-        defaultLogger.warn('KMS Debug - First attempt to compute address failed, trying with modified key', {
-          error: e instanceof Error ? e.message : String(e),
-        });
+        defaultLogger.warn(
+          'KMS Debug - First attempt to compute address failed, trying with modified key',
+          {
+            error: e instanceof Error ? e.message : String(e),
+          }
+        );
 
         if (uncompressedPublicKey.length > 65) {
-          const strippedKey = Buffer.concat([Buffer.from([0x04]), uncompressedPublicKey.slice(-64)]);
+          const strippedKey = Buffer.concat([
+            Buffer.from([0x04]),
+            uncompressedPublicKey.slice(-64),
+          ]);
 
           if (this.debug) {
             defaultLogger.debug('KMS Debug - Trying stripped key format', {
@@ -183,7 +194,9 @@ export class DirectKmsTransactionSigner extends Signer {
         requestId: (error as any)?.$metadata?.requestId,
         keyId: this.kmsKeyId,
       });
-      throw new Error(`Error getting address from KMS: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Error getting address from KMS: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -205,7 +218,9 @@ export class DirectKmsTransactionSigner extends Signer {
         SigningAlgorithm: 'ECDSA_SHA_256',
       });
 
-      const response = await this.executeWithRetry('signMessage', () => this.kmsClient.send(signCommand));
+      const response = await this.executeWithRetry('signMessage', () =>
+        this.kmsClient.send(signCommand)
+      );
 
       if (!response.Signature) {
         throw new Error('No signature returned from KMS');
@@ -238,7 +253,9 @@ export class DirectKmsTransactionSigner extends Signer {
         requestId: (error as any)?.$metadata?.requestId,
         keyId: this.kmsKeyId,
       });
-      throw new Error(`Error signing message with KMS: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Error signing message with KMS: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -270,14 +287,15 @@ export class DirectKmsTransactionSigner extends Signer {
         delete tx.gasPrice;
       }
 
-      if (!tx.maxFeePerGas || !tx.maxPriorityFeePerGas) {
-        const feeData = await this.provider!.getFeeData();
+      if ((!tx.maxFeePerGas || !tx.maxPriorityFeePerGas) && this.provider) {
+        const feeData = await this.provider.getFeeData();
         tx.maxFeePerGas =
           tx.maxFeePerGas ||
           feeData.maxFeePerGas ||
           feeData.lastBaseFeePerGas?.mul(2) ||
           ethers.BigNumber.from(100000000);
-        tx.maxPriorityFeePerGas = tx.maxPriorityFeePerGas || feeData.maxPriorityFeePerGas || ethers.BigNumber.from(0);
+        tx.maxPriorityFeePerGas =
+          tx.maxPriorityFeePerGas || feeData.maxPriorityFeePerGas || ethers.BigNumber.from(0);
       }
 
       const unsignedTx = ethers.utils.serializeTransaction(tx as ethers.UnsignedTransaction);
@@ -290,7 +308,9 @@ export class DirectKmsTransactionSigner extends Signer {
         SigningAlgorithm: 'ECDSA_SHA_256',
       });
 
-      const response = await this.executeWithRetry('signTransaction', () => this.kmsClient.send(signCommand));
+      const response = await this.executeWithRetry('signTransaction', () =>
+        this.kmsClient.send(signCommand)
+      );
 
       if (!response.Signature) {
         throw new Error('No signature returned from KMS');
@@ -325,7 +345,11 @@ export class DirectKmsTransactionSigner extends Signer {
         keyId: this.kmsKeyId,
         chainId: transaction.chainId,
       });
-      throw new Error(`Error signing transaction with KMS: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Error signing transaction with KMS: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   }
 
@@ -372,7 +396,9 @@ export class DirectKmsTransactionSigner extends Signer {
     }
   }
 
-  async populateTransaction(transaction: Deferrable<TransactionRequest>): Promise<TransactionRequest> {
+  async populateTransaction(
+    transaction: Deferrable<TransactionRequest>
+  ): Promise<TransactionRequest> {
     const tx = await ethers.utils.resolveProperties(transaction);
     const populated: TransactionRequest = { ...tx };
 
@@ -408,8 +434,8 @@ export class DirectKmsTransactionSigner extends Signer {
       populated.chainId = await this.getChainId();
     }
 
-    if (!populated.maxFeePerGas || !populated.maxPriorityFeePerGas) {
-      const feeData = await this.provider!.getFeeData();
+    if ((!populated.maxFeePerGas || !populated.maxPriorityFeePerGas) && this.provider) {
+      const feeData = await this.provider.getFeeData();
       populated.maxFeePerGas =
         populated.maxFeePerGas ||
         feeData.maxFeePerGas ||
@@ -429,8 +455,9 @@ export class DirectKmsTransactionSigner extends Signer {
     retryDelay = this.retryDelay
   ): Promise<T> {
     let attempts = 0;
+    const isRetrying = true;
 
-    while (true) {
+    while (isRetrying) {
       try {
         attempts++;
         return await fn();
@@ -460,29 +487,36 @@ export class DirectKmsTransactionSigner extends Signer {
           throw error;
         }
 
-        defaultLogger.warn(`KMS operation ${operation} failed, retrying (${attempts}/${maxRetries})`, {
-          error: error instanceof Error ? error.message : String(error),
-          errorCode: typeof errorObj.code === 'string' ? errorObj.code : 'unknown',
-          errorName:
-            typeof errorObj.name === 'string'
-              ? errorObj.name
-              : (error && error.constructor && error.constructor.name) || 'unknown',
-          attempt: attempts,
-        });
+        defaultLogger.warn(
+          `KMS operation ${operation} failed, retrying (${attempts}/${maxRetries})`,
+          {
+            error: error instanceof Error ? error.message : String(error),
+            errorCode: typeof errorObj.code === 'string' ? errorObj.code : 'unknown',
+            errorName:
+              typeof errorObj.name === 'string'
+                ? errorObj.name
+                : (error && error.constructor && error.constructor.name) || 'unknown',
+            attempt: attempts,
+          }
+        );
 
         const delay = retryDelay * Math.pow(2, attempts - 1);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
+
+    throw new Error(`Unexpected exit from retry loop in ${operation}`);
   }
 
   private trackAwsError(operation: string, error: any): void {
     try {
       defaultLogger.error(`KMS Error during ${operation}`, {
-        errorName: error && typeof error === 'object' && 'name' in error ? error.name : 'UnknownError',
-        errorCode: error && typeof error === 'object' && 'code' in error ? error.code : 'UnknownCode',
+        errorName:
+          error && typeof error === 'object' && 'name' in error ? error.name : 'UnknownError',
+        errorCode:
+          error && typeof error === 'object' && 'code' in error ? error.code : 'UnknownCode',
         statusCode: error?.$metadata?.httpStatusCode,
-        requestId: error?.$metadata?.requestId
+        requestId: error?.$metadata?.requestId,
       });
     } catch (e) {
       defaultLogger.error('Failed to track KMS error', { error: String(e) });

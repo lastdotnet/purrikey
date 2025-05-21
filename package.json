@@ -1,5 +1,5 @@
 {
-  "name": "@lastdotnot/purrikey",
+  "name": "@lastdotnet/purrikey",
   "version": "1.0.0",
   "description": "An ethers.js-compatible signer with AWS KMS support",
   "main": "dist/index.js",

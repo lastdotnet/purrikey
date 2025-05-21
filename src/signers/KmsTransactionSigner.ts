@@ -18,7 +18,7 @@ export class KmsTransactionSigner extends Signer {
   private region?: string;
   private _cachedPublicKeys: Map<string, string> = new Map();
 
-  constructor(keyId: string, provider?: providers.Provider, region?: string, debug: boolean = false) {
+  constructor(keyId: string, provider?: providers.Provider, region?: string, debug = false) {
     super();
     this.kmsKeyId = keyId;
     this.region = region;
@@ -48,8 +48,11 @@ export class KmsTransactionSigner extends Signer {
 
     try {
       if (this._cachedPublicKeys.has(this.kmsKeyId)) {
-        this._address = this._cachedPublicKeys.get(this.kmsKeyId)!;
-        return this._address;
+        const cachedAddress = this._cachedPublicKeys.get(this.kmsKeyId);
+        if (cachedAddress) {
+          this._address = cachedAddress;
+          return this._address;
+        }
       }
 
       const messageHex = '000000000000000000000000000000000000000000000000000000000000000000000000';
@@ -83,7 +86,12 @@ export class KmsTransactionSigner extends Signer {
             address = recoveredAddress;
             break;
           }
-        } catch (e) {}
+        } catch (e) {
+          defaultLogger.debug('Recovery attempt failed for v value', {
+            recoveryValue: v,
+            error: e instanceof Error ? e.message : String(e)
+          });
+        }
       }
 
       if (!address) {
@@ -189,8 +197,8 @@ export class KmsTransactionSigner extends Signer {
         throw new Error('Transaction missing chainId and no provider available');
       }
 
-      if (!tx.maxFeePerGas || !tx.maxPriorityFeePerGas) {
-        const feeData = await this.provider!.getFeeData();
+      if ((!tx.maxFeePerGas || !tx.maxPriorityFeePerGas) && this.provider) {
+        const feeData = await this.provider.getFeeData();
         tx.maxFeePerGas =
           tx.maxFeePerGas ||
           feeData.maxFeePerGas ||
@@ -313,8 +321,8 @@ export class KmsTransactionSigner extends Signer {
       populated.chainId = await this.getChainId();
     }
 
-    if (!populated.maxFeePerGas || !populated.maxPriorityFeePerGas) {
-      const feeData = await this.provider!.getFeeData();
+    if ((!populated.maxFeePerGas || !populated.maxPriorityFeePerGas) && this.provider) {
+      const feeData = await this.provider.getFeeData();
       populated.maxFeePerGas =
         populated.maxFeePerGas ||
         feeData.maxFeePerGas ||

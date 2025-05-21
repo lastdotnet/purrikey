@@ -162,7 +162,11 @@ export async function derToSignature(
 
         return normalizedSig as ethers.Signature;
       }
-    } catch (e) {}
+    } catch (e) {
+      defaultLogger.debug('Recovery attempt with canonical s failed', {
+        error: e instanceof Error ? e.message : String(e)
+      });
+    }
   }
 
   throw new Error(`Failed to recover the expected address ${expectedAddr} from signature`);
